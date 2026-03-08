@@ -456,3 +456,92 @@ class test_MVSEC_sevfi(Dataset):
 
         return sample
 
+# ==============新增改动============
+# Training Datasets
+# =================================
+
+def _get_gt_indices(index_0, index_1, num_insert):
+    """
+    给定两端帧下标 index_0, index_1
+    生成 num_insert 个 GT 中间帧下标。
+    兼容 num_insert != num_skip 的情况（用 round 取最近帧）。
+    """
+    step = (index_1 - index_0) / float(num_insert + 1)
+    gt_indices = []
+    for i in range(num_insert):
+        gt_idx = int(round(index_0 + step * (i + 1)))
+        gt_indices.append(gt_idx)
+    return gt_indices
+
+
+class train_SEID_sevfi(test_SEID_sevfi):
+    """
+    在 test_SEID_sevfi 基础上额外返回 GT 中间帧 image_t
+    image_t shape: [N, H, W, 3]，N=num_insert
+    """
+    def __getitem__(self, index):
+        sample = super().__getitem__(index)
+
+        index_0 = index * (self.num_skip + 1)
+        index_1 = index_0 + (self.num_skip + 1)
+
+        gt_indices = _get_gt_indices(index_0, index_1, self.num_insert)
+
+        gt_list = []
+        for gi in gt_indices:
+            # 防越界保护
+            gi = max(0, min(gi, len(self.images_list) - 1))
+            gt = cv2.imread(os.path.join(self.images_path, self.images_list[gi]), cv2.IMREAD_COLOR)
+            gt_list.append(gt)
+
+        image_t = np.stack(gt_list, axis=0)  # [N, H, W, 3]
+        sample["image_t"] = image_t
+        return sample
+
+
+class train_DSEC_sevfi(test_DSEC_sevfi):
+    """
+    在 test_DSEC_sevfi 基础上额外返回 GT 中间帧 image_t
+    """
+    def __getitem__(self, index):
+        sample = super().__getitem__(index)
+
+        index_0 = index * (self.num_skip + 1)
+        index_1 = index_0 + (self.num_skip + 1)
+
+        gt_indices = _get_gt_indices(index_0, index_1, self.num_insert)
+
+        gt_list = []
+        for gi in gt_indices:
+            gi = max(0, min(gi, len(self.images_list) - 1))
+            gt = cv2.imread(os.path.join(self.images_path, self.images_list[gi]), cv2.IMREAD_COLOR)
+            gt_list.append(gt)
+
+        image_t = np.stack(gt_list, axis=0)  # [N, H, W, 3]
+        sample["image_t"] = image_t
+        return sample
+
+
+class train_MVSEC_sevfi(test_MVSEC_sevfi):
+    """
+    在 test_MVSEC_sevfi 基础上额外返回 GT 中间帧 image_t
+    """
+    def __getitem__(self, index):
+        sample = super().__getitem__(index)
+
+        index_0 = index * (self.num_skip + 1)
+        index_1 = index_0 + (self.num_skip + 1)
+
+        gt_indices = _get_gt_indices(index_0, index_1, self.num_insert)
+
+        gt_list = []
+        for gi in gt_indices:
+            gi = max(0, min(gi, len(self.images_list) - 1))
+            gt = cv2.imread(os.path.join(self.images_path, self.images_list[gi]), cv2.IMREAD_COLOR)
+            gt_list.append(gt)
+
+        image_t = np.stack(gt_list, axis=0)  # [N, H, W, 3]
+        sample["image_t"] = image_t
+        return sample
+    
+# ==============改动结束================

@@ -58,7 +58,7 @@ def disp_warp(img, disp, padding_mode='border'):
     sample_grid = grid + offset
     sample_grid = normalize_coords(sample_grid)  # [B, H, W, 2] in [-1, 1]
     warped_img = F.grid_sample(img, sample_grid, mode='bilinear', padding_mode=padding_mode)
-
+    # 标记哪些像素采样是有效的，哪些是越界的。
     mask = torch.ones_like(img)
     valid_mask = F.grid_sample(mask, sample_grid, mode='bilinear', padding_mode='zeros')
     valid_mask[valid_mask < 0.9999] = 0

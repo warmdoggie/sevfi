@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from Networks.dcn_pack import DCNv2
+import math
 
 ##### Deformable Convolution Networks #####
 class AlignNetwork(nn.Module):
@@ -443,15 +444,26 @@ class ImagePred(nn.Module):
         super(ImagePred, self).__init__()
         self.conv1 = conv2d(in_planes=inChannels, out_planes=inChannels, batch_norm=False, activation=nn.LeakyReLU(),
                             kernel_size=3, stride=1)
-        self.ca = ChannelAttention(inChannels)
-        self.sa = SpatialAttention()
+        # 改动版本1 -------------------------------
+        # 源代码
+        # self.ca = ChannelAttention(inChannels)
+        # self.sa = SpatialAttention()
+        # 源代码结束
+        '''CBAM---> ECA'''
+        self.att = ECA(inChannels) 
+        # 改动结束----------------------------
         self.conv2 = conv2d(in_planes=inChannels, out_planes=3, batch_norm=False, activation=nn.Sigmoid(),
                             kernel_size=3, stride=1)
 
     def forward(self, x):
         x = self.conv1(x)
-        x = self.ca(x) * x
-        x = self.sa(x) * x
+        # 改动版本1 -------------------------------
+        # 源代码
+        # x = self.ca(x) * x
+        # x = self.sa(x) * x
+        # 源代码结束
+        x = self.att(x) 
+        # 改动结束----------------------------
         pred = self.conv2(x)
         return x, pred
 
@@ -460,16 +472,27 @@ class PredDisp(nn.Module):
         super(PredDisp, self).__init__()
         self.conv1 = nn.Conv2d(inChannels, inChannels, kernel_size=3, padding=1, stride=1)
         self.acf1 = nn.LeakyReLU(negative_slope=0.1, inplace=True)
-        self.ca = ChannelAttention(inChannels)
-        self.sa = SpatialAttention()
+        # 改动版本1 -------------------------------
+        # 源代码
+        # self.ca = ChannelAttention(inChannels)
+        # self.sa = SpatialAttention()
+        # 源代码结束
+        '''CBAM---> ECA'''
+        self.att = ECA(inChannels) 
+        # 改动结束----------------------------
         self.conv2 = nn.Conv2d(inChannels, 1, kernel_size=3, padding=1, stride=1)
         self.acf2 = nn.Sigmoid()
         self.scale = scale
 
     def forward(self, x):
         x = self.acf1(self.conv1(x))
-        x = self.ca(x) * x
-        x = self.sa(x) * x
+        # 改动版本1 -------------------------------
+        # 源代码
+        # x = self.ca(x) * x
+        # x = self.sa(x) * x
+        # 源代码结束
+        x = self.att(x) 
+        # 改动结束----------------------------
         pred = self.acf2(self.conv2(x)) * 40. / 2**self.scale
         return x, pred
 
@@ -478,16 +501,27 @@ class PredDisp_DSEC(nn.Module):
         super(PredDisp_DSEC, self).__init__()
         self.conv1 = nn.Conv2d(inChannels, inChannels, kernel_size=3, padding=1, stride=1)
         self.acf1 = nn.LeakyReLU(negative_slope=0.1, inplace=True)
-        self.ca = ChannelAttention(inChannels)
-        self.sa = SpatialAttention()
+        # 改动版本1 -------------------------------
+        # 源代码
+        # self.ca = ChannelAttention(inChannels)
+        # self.sa = SpatialAttention()
+        # 源代码结束
+        '''CBAM---> ECA'''
+        self.att = ECA(inChannels) 
+        # 改动结束----------------------------
         self.conv2 = nn.Conv2d(inChannels, 1, kernel_size=3, padding=1, stride=1)
         self.acf2 = nn.Sigmoid()
         self.scale = scale
 
     def forward(self, x):
         x = self.acf1(self.conv1(x))
-        x = self.ca(x) * x
-        x = self.sa(x) * x
+        # 改动版本1 -------------------------------
+        # 源代码
+        # x = self.ca(x) * x
+        # x = self.sa(x) * x
+        # 源代码结束
+        x = self.att(x) 
+        # 改动结束----------------------------
         pred = self.acf2(self.conv2(x)) * 80. / 2**self.scale
         return x, pred
 
@@ -496,16 +530,27 @@ class PredFlow(nn.Module):
         super(PredFlow, self).__init__()
         self.conv1 = conv2d(in_planes=inChannels, out_planes=inChannels, batch_norm=False, activation=nn.LeakyReLU(),
                             kernel_size=3, stride=1)
-        self.ca = ChannelAttention(inChannels)
-        self.sa = SpatialAttention()
+        # 改动版本1 -------------------------------
+        # 源代码
+        # self.ca = ChannelAttention(inChannels)
+        # self.sa = SpatialAttention()
+        # 源代码结束
+        '''CBAM---> ECA'''
+        self.att = ECA(inChannels) 
+        # 改动结束----------------------------
         self.conv2 = conv2d(in_planes=inChannels, out_planes=4, batch_norm=False, activation=nn.Tanh(), kernel_size=3,
                             stride=1)
         self.scale = scale
 
     def forward(self, x):
         x = self.conv1(x)
-        x = self.ca(x) * x
-        x = self.sa(x) * x
+        # 改动版本1 -------------------------------
+        # 源代码
+        # x = self.ca(x) * x
+        # x = self.sa(x) * x
+        # 源代码结束
+        x = self.att(x) 
+        # 改动结束----------------------------
         flow = self.conv2(x) * 128. / 2**self.scale
         return x, flow
 
@@ -627,3 +672,32 @@ class Cascade_resnet_blocks(nn.Module):
 if __name__ == "__main__":
     import os
     os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+
+
+# ------------改进代码-------------------
+# 增加注意力模块ECA
+
+class ECA(nn.Module):
+    """
+    Efficient Channel Attention (ECA)
+    输入:  x [N,C,H,W]
+    输出:  x * w, w [N,C,1,1]
+    """
+    def __init__(self, channels, k_size=None, gamma=2, b=1):
+        super().__init__()
+        # 论文里常用自适应k：k = | (log2(C)/gamma + b) |_odd
+        if k_size is None:
+            t = int(abs((math.log2(channels) / gamma) + b))
+            k_size = t if t % 2 else t + 1
+            k_size = max(k_size, 3)  # 至少3
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv1d = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        y = self.avg_pool(x)                         # [N,C,1,1]
+        y = y.squeeze(-1).transpose(-1, -2)          # [N,1,C]
+        y = self.conv1d(y)                           # [N,1,C]
+        y = y.transpose(-1, -2).unsqueeze(-1)        # [N,C,1,1]
+        w = self.sigmoid(y)
+        return x * w
