@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+
+# large data / results / weights
+sample/dataset/
+sample/result*/
+PreTrained*/
+PreTrained_ECA*/
+
+# common large files
+*.pth
+*.pt
+*.ckpt
+*.h5
+*.zip
+*.tar
+*.tar.gz
