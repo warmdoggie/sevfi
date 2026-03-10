@@ -446,11 +446,11 @@ class ImagePred(nn.Module):
                             kernel_size=3, stride=1)
         # 改动版本1 -------------------------------
         # 源代码
-        # self.ca = ChannelAttention(inChannels)
-        # self.sa = SpatialAttention()
+        self.ca = ChannelAttention(inChannels)
+        self.sa = SpatialAttention()
         # 源代码结束
         '''CBAM---> ECA'''
-        self.att = ECA(inChannels) 
+        # self.att = ECA(inChannels) 
         # 改动结束----------------------------
         self.conv2 = conv2d(in_planes=inChannels, out_planes=3, batch_norm=False, activation=nn.Sigmoid(),
                             kernel_size=3, stride=1)
@@ -459,10 +459,10 @@ class ImagePred(nn.Module):
         x = self.conv1(x)
         # 改动版本1 -------------------------------
         # 源代码
-        # x = self.ca(x) * x
-        # x = self.sa(x) * x
+        x = self.ca(x) * x
+        x = self.sa(x) * x
         # 源代码结束
-        x = self.att(x) 
+        # x = self.att(x) 
         # 改动结束----------------------------
         pred = self.conv2(x)
         return x, pred
@@ -474,11 +474,11 @@ class PredDisp(nn.Module):
         self.acf1 = nn.LeakyReLU(negative_slope=0.1, inplace=True)
         # 改动版本1 -------------------------------
         # 源代码
-        # self.ca = ChannelAttention(inChannels)
-        # self.sa = SpatialAttention()
+        self.ca = ChannelAttention(inChannels)
+        self.sa = SpatialAttention()
         # 源代码结束
         '''CBAM---> ECA'''
-        self.att = ECA(inChannels) 
+        # self.att = ECA(inChannels) 
         # 改动结束----------------------------
         self.conv2 = nn.Conv2d(inChannels, 1, kernel_size=3, padding=1, stride=1)
         self.acf2 = nn.Sigmoid()
@@ -488,10 +488,10 @@ class PredDisp(nn.Module):
         x = self.acf1(self.conv1(x))
         # 改动版本1 -------------------------------
         # 源代码
-        # x = self.ca(x) * x
-        # x = self.sa(x) * x
+        x = self.ca(x) * x
+        x = self.sa(x) * x
         # 源代码结束
-        x = self.att(x) 
+        # x = self.att(x) 
         # 改动结束----------------------------
         pred = self.acf2(self.conv2(x)) * 40. / 2**self.scale
         return x, pred
@@ -503,11 +503,11 @@ class PredDisp_DSEC(nn.Module):
         self.acf1 = nn.LeakyReLU(negative_slope=0.1, inplace=True)
         # 改动版本1 -------------------------------
         # 源代码
-        # self.ca = ChannelAttention(inChannels)
-        # self.sa = SpatialAttention()
+        self.ca = ChannelAttention(inChannels)
+        self.sa = SpatialAttention()
         # 源代码结束
         '''CBAM---> ECA'''
-        self.att = ECA(inChannels) 
+        # self.att = ECA(inChannels) 
         # 改动结束----------------------------
         self.conv2 = nn.Conv2d(inChannels, 1, kernel_size=3, padding=1, stride=1)
         self.acf2 = nn.Sigmoid()
@@ -517,10 +517,10 @@ class PredDisp_DSEC(nn.Module):
         x = self.acf1(self.conv1(x))
         # 改动版本1 -------------------------------
         # 源代码
-        # x = self.ca(x) * x
-        # x = self.sa(x) * x
+        x = self.ca(x) * x
+        x = self.sa(x) * x
         # 源代码结束
-        x = self.att(x) 
+        # x = self.att(x) 
         # 改动结束----------------------------
         pred = self.acf2(self.conv2(x)) * 80. / 2**self.scale
         return x, pred
@@ -532,11 +532,11 @@ class PredFlow(nn.Module):
                             kernel_size=3, stride=1)
         # 改动版本1 -------------------------------
         # 源代码
-        # self.ca = ChannelAttention(inChannels)
-        # self.sa = SpatialAttention()
+        self.ca = ChannelAttention(inChannels)
+        self.sa = SpatialAttention()
         # 源代码结束
         '''CBAM---> ECA'''
-        self.att = ECA(inChannels) 
+        # self.att = ECA(inChannels) 
         # 改动结束----------------------------
         self.conv2 = conv2d(in_planes=inChannels, out_planes=4, batch_norm=False, activation=nn.Tanh(), kernel_size=3,
                             stride=1)
@@ -546,10 +546,10 @@ class PredFlow(nn.Module):
         x = self.conv1(x)
         # 改动版本1 -------------------------------
         # 源代码
-        # x = self.ca(x) * x
-        # x = self.sa(x) * x
+        x = self.ca(x) * x
+        x = self.sa(x) * x
         # 源代码结束
-        x = self.att(x) 
+        # x = self.att(x) 
         # 改动结束----------------------------
         flow = self.conv2(x) * 128. / 2**self.scale
         return x, flow
