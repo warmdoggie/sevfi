@@ -72,7 +72,7 @@ def eval_psnr_ssim_with_offset(pred_dir, gt_dir, num_skip, base_offset):
 
 # ====== 你的调用（按你描述 base_offset=600）======
 eval_psnr_ssim_with_offset(
-    pred_dir="/data1/duanzhibo/riLght/sevfi/SEVFI/sample/result/DSEC/DSEC_s3_i3_p256_cosine_baseline__best_train/insert_3/zurich_city_01_c",
+    pred_dir="/data1/duanzhibo/riLght/sevfi/SEVFI/sample/result/DSEC/Old_test/New_train2_baseline1-test3/insert_3/zurich_city_01_c",
     gt_dir="/data1/duanzhibo/riLght/sevfi/SEVFI/sample/dataset/DSEC/zurich_city_01_c/images",
     num_skip=3,
     base_offset=0

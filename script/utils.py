@@ -67,8 +67,17 @@ def disp_warp(img, disp, padding_mode='border'):
 
 ##############################################################################
 ##############################################################################
-def normalization(data):
-    return (data - data.min())/(data.max()-data.min())
+def normalization(data, eps=1e-6):
+    if data.dim() == 4:   # [B,C,H,W]
+        dmin = data.amin(dim=(1, 2, 3), keepdim=True)
+        dmax = data.amax(dim=(1, 2, 3), keepdim=True)
+    elif data.dim() == 3: # [C,H,W]
+        dmin = data.amin(dim=(0, 1, 2), keepdim=True)
+        dmax = data.amax(dim=(0, 1, 2), keepdim=True)
+    else:
+        dmin = data.min()
+        dmax = data.max()
+    return (data - dmin) / (dmax - dmin + eps)
 
 def get_filename(path, suffix):
     ## function used to get file names
@@ -99,14 +108,16 @@ def filter_events_by_time(x, y, p, t, start, end):
 
 def reverse_events(x, y, p, t):
     if len(t) > 0:
-        p[p == 1] = 2
-        p[p == 0] = 1
-        p[p == 2] = 0
-        t = t[-1] - t
+        p_r = p.copy()
+        p_r[p_r == 1] = 2
+        p_r[p_r == 0] = 1
+        p_r[p_r == 2] = 0
+
+        t_r = t[-1] - t
         x_r = np.flipud(x)
         y_r = np.flipud(y)
-        t_r = np.flipud(t)
-        p_r = np.flipud(p)
+        t_r = np.flipud(t_r)
+        p_r = np.flipud(p_r)
         return x_r, y_r, p_r, t_r
     else:
         return x, y, p, t
@@ -173,28 +184,51 @@ class VoxelGrid(EventRepresentation):
 
         return voxel_grid
 
-def warp_images_with_flow(images, flow):
+def warp_images_with_flow(images, flow, padding_mode='zeros', align_corners=False):
     """
-    Generates a prediction of an image given the optical flow, as in Spatial Transformer Networks.
+    Generates a prediction of an image given the optical flow.
+    Compatible with old PyTorch versions that do not support
+    torch.meshgrid(..., indexing='ij').
     """
     dim3 = 0
     if images.dim() == 3:
         dim3 = 1
         images = images.unsqueeze(0)
         flow = flow.unsqueeze(0)
-    height = images.shape[2]
-    width = images.shape[3]
-    flow_x, flow_y = flow[:, 0, ...], flow[:, 1, ...]
-    coord_y, coord_x = torch.meshgrid(torch.arange(height), torch.arange(width))
 
-    pos_x = coord_x.reshape(height, width).type(torch.float32).cuda() + flow_x
-    pos_y = coord_y.reshape(height, width).type(torch.float32).cuda() + flow_y
-    pos_x = (pos_x - (width - 1) / 2) / ((width - 1) / 2)
-    pos_y = (pos_y - (height - 1) / 2) / ((height - 1) / 2)
+    b, c, height, width = images.shape
+    device = images.device
+    dtype = images.dtype
 
-    pos = torch.stack((pos_x, pos_y), 3).type(torch.float32)
-    result = torch.nn.functional.grid_sample(images, pos, mode='bilinear', padding_mode='zeros')
+    flow_x = flow[:, 0, ...]
+    flow_y = flow[:, 1, ...]
+
+    # old PyTorch compatible
+    coord_y, coord_x = torch.meshgrid(
+        torch.arange(height, device=device).type(dtype),
+        torch.arange(width, device=device).type(dtype)
+    )
+
+    coord_x = coord_x.unsqueeze(0).expand(b, -1, -1)
+    coord_y = coord_y.unsqueeze(0).expand(b, -1, -1)
+
+    pos_x = coord_x + flow_x
+    pos_y = coord_y + flow_y
+
+    pos_x = (pos_x - (width - 1) / 2.0) / max((width - 1) / 2.0, 1.0)
+    pos_y = (pos_y - (height - 1) / 2.0) / max((height - 1) / 2.0, 1.0)
+
+    pos = torch.stack((pos_x, pos_y), dim=3).type(dtype)
+
+    result = F.grid_sample(
+        images,
+        pos,
+        mode='bilinear',
+        padding_mode=padding_mode,
+        align_corners=align_corners
+    )
+
     if dim3 == 1:
-        result = result.squeeze()
+        result = result.squeeze(0)
 
     return result
